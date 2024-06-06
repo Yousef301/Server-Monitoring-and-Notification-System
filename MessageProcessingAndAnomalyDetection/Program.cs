@@ -1,3 +1,16 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using MessageProcessingAndAnomalyDetection.Messaging;
+using MessageProcessingAndAnomalyDetection.Models;
+using RabbitMQ.Client;
+using ServerStatisticsCollection.Configurations;
 
-Console.WriteLine("Hello, World!");
+namespace MessageProcessingAndAnomalyDetection;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var factory = new ConnectionFactory() { HostName = "localhost" };
+        var messageQueue = new RabbitMqMessageQueueConsumer(factory);
+        messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
+    }
+}
