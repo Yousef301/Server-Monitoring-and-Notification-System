@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerStatisticsCollection"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MessageProcessingAndAnomalyDetection", "MessageProcessingAndAnomalyDetection\MessageProcessingAndAnomalyDetection.csproj", "{85EBED3A-1A2A-4621-9F78-FC81F67CB0D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalRServer", "SignalRServer\SignalRServer.csproj", "{F4E1D65A-9867-45B6-B1C7-05699F5BCD7D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{85EBED3A-1A2A-4621-9F78-FC81F67CB0D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85EBED3A-1A2A-4621-9F78-FC81F67CB0D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{85EBED3A-1A2A-4621-9F78-FC81F67CB0D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4E1D65A-9867-45B6-B1C7-05699F5BCD7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4E1D65A-9867-45B6-B1C7-05699F5BCD7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4E1D65A-9867-45B6-B1C7-05699F5BCD7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4E1D65A-9867-45B6-B1C7-05699F5BCD7D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
