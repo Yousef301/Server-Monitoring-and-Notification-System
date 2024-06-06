@@ -1,5 +1,7 @@
 ﻿using System.Text;
 using MessageProcessingAndAnomalyDetection.Interfaces;
+using MessageProcessingAndAnomalyDetection.Interfaces.Repositories;
+using MessageProcessingAndAnomalyDetection.Models;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -9,10 +11,13 @@ namespace MessageProcessingAndAnomalyDetection.Messaging;
 public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
 {
     private readonly ConnectionFactory _connectionFactory;
+    private readonly IServerStatisticsRepository _serverStatisticsMongoDbRepository;
 
-    public RabbitMqMessageQueueConsumer(ConnectionFactory connectionFactory)
+    public RabbitMqMessageQueueConsumer(ConnectionFactory connectionFactory,
+        IServerStatisticsRepository serverStatisticsMongoDbRepository)
     {
         _connectionFactory = connectionFactory;
+        _serverStatisticsMongoDbRepository = serverStatisticsMongoDbRepository;
     }
 
     public void StartConsuming<T>(string exchange, string topic)
@@ -34,9 +39,19 @@ public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
 
+            string?[] routingKeyParts = ea.RoutingKey.Split('.');
+            var serverIdentifier = routingKeyParts.Length > 1 ? routingKeyParts[1] : null;
+
             var deserializedMessage = JsonConvert.DeserializeObject<T>(message);
 
-            Console.WriteLine("Received message: " + deserializedMessage);
+            if (deserializedMessage is ServerStatistics serverStat)
+            {
+                var previousServerStatistics = _serverStatisticsMongoDbRepository.GetLatestServerStatistics();
+
+                serverStat.ServerIdentifier = serverIdentifier;
+                _serverStatisticsMongoDbRepository.AddServerStatistics(serverStat);
+                Console.WriteLine(serverStat.ToString());
+            }
         };
 
         channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
