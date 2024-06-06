@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using MessageProcessingAndAnomalyDetection.Interfaces;
 using MessageProcessingAndAnomalyDetection.Interfaces.Repositories;
+using MessageProcessingAndAnomalyDetection.Interfaces.Services;
 using MessageProcessingAndAnomalyDetection.Models;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
@@ -12,12 +13,15 @@ public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
 {
     private readonly ConnectionFactory _connectionFactory;
     private readonly IServerStatisticsRepository _serverStatisticsMongoDbRepository;
+    private readonly ISendAlertsService _sendAlertsService;
 
     public RabbitMqMessageQueueConsumer(ConnectionFactory connectionFactory,
-        IServerStatisticsRepository serverStatisticsMongoDbRepository)
+        IServerStatisticsRepository serverStatisticsMongoDbRepository,
+        ISendAlertsService sendAlertsService)
     {
         _connectionFactory = connectionFactory;
         _serverStatisticsMongoDbRepository = serverStatisticsMongoDbRepository;
+        _sendAlertsService = sendAlertsService;
     }
 
     public void StartConsuming<T>(string exchange, string topic)
@@ -47,6 +51,8 @@ public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
             if (deserializedMessage is ServerStatistics serverStat)
             {
                 var previousServerStatistics = _serverStatisticsMongoDbRepository.GetLatestServerStatistics();
+
+                _sendAlertsService.SendAlerts(serverStat, previousServerStatistics);
 
                 serverStat.ServerIdentifier = serverIdentifier;
                 _serverStatisticsMongoDbRepository.AddServerStatistics(serverStat);
