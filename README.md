@@ -37,3 +37,16 @@
     - Implement a class for publishing messages to a RabbitMQ exchange.
     - Implement a class for consuming messages from a RabbitMQ queue.
     - Both classes should utilize an interface, making the library extensible and not tightly coupled to RabbitMQ.
+ 
+
+## **How to Run?**
+
+To run this simple app, you need to run an instance of each service sequentially as follows:
+SignalRServer -> SignalREventConsumer -> ServerStatisticsCollection -> MessageProcessing
+
+If any issue occur try to run MessageProcessing before ServerStatisticsCollection
+
+
+## **System Pipeline**
+
+
