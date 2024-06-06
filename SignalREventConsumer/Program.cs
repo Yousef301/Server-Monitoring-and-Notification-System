@@ -18,7 +18,7 @@ class Program
         }
 
         var connection = new HubConnectionBuilder()
-            .WithUrl("http://localhost:5000/AlertHub")
+            .WithUrl(signalRUrl)
             .Build();
 
         await connection.StartAsync();
