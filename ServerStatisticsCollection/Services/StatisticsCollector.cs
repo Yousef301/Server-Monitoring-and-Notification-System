@@ -11,13 +11,17 @@ public class StatisticsCollector : IStatisticsCollector
     private readonly int _samplingIntervalSeconds;
     private readonly PerformanceCounter _cpuCounter;
     private readonly PerformanceCounter _availableMemoryCounter;
+    private readonly IMessageQueuePublisher _messageQueuePublisher;
     private readonly ConfigurationManager _configManager;
 
-    public StatisticsCollector(int samplingIntervalSeconds, ConfigurationManager configManager)
+    public StatisticsCollector(int samplingIntervalSeconds,
+        IMessageQueuePublisher messageQueuePublisher,
+        ConfigurationManager configManager)
     {
         _samplingIntervalSeconds = samplingIntervalSeconds;
         _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
         _availableMemoryCounter = new PerformanceCounter("Memory", "Available Bytes");
+        _messageQueuePublisher = messageQueuePublisher;
         _configManager = configManager;
     }
 
@@ -28,6 +32,7 @@ public class StatisticsCollector : IStatisticsCollector
         while (!cancellationToken.IsCancellationRequested)
         {
             var stats = CollectStatistics();
+            _messageQueuePublisher.Publish(exchange, topic, stats);
             await Task.Delay(_samplingIntervalSeconds * 1000, cancellationToken);
         }
     }
