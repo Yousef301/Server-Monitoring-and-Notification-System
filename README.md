@@ -48,5 +48,5 @@ If any issue occur try to run MessageProcessing before ServerStatisticsCollectio
 
 
 ## **System Pipeline**
-
+![](Images/system_pipeline.png)
 
