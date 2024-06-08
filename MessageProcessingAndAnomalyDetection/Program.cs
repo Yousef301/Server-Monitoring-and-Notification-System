@@ -1,4 +1,5 @@
-﻿using MessageProcessingAndAnomalyDetection.Logging;
+﻿using MessageProcessingAndAnomalyDetection.ConsoleIO.ConsoleOutput;
+using MessageProcessingAndAnomalyDetection.Logging;
 using MessageProcessingAndAnomalyDetection.Messaging;
 using MessageProcessingAndAnomalyDetection.Models;
 using MessageProcessingAndAnomalyDetection.Repositories;
@@ -44,16 +45,20 @@ class Program
 
                 await hubConnection.StartAsync();
 
-                var factory = new ConnectionFactory() { HostName = "localhost" };
+                var factory = new ConnectionFactory { HostName = "localhost" };
                 var messageQueue =
                     new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
                 messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
             }
             else
             {
-                Console.WriteLine("SignalRUrl or logging path is not configured in the appsettings.json file");
+                ConsoleOutput.MessageDisplay(
+                    "SignalRUrl or logging path is not configured in the appsettings.json file.");
             }
         }
+        else
+            ConsoleOutput.MessageDisplay(
+                "Check the configuration file 'appsettings.json'.");
     }
 
     private static IMongoDatabase GetMongoDb(string? connectionString, string? databaseName)
