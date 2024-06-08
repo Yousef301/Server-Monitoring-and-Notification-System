@@ -36,4 +36,9 @@ public class ConfigurationManager
         var value = _configuration.GetSection(section)[key];
         return value;
     }
+
+    public IConfiguration GetConfiguration()
+    {
+        return _configuration;
+    }
 }

@@ -23,16 +23,14 @@ class Program
 
             var collector = new StatisticsCollector(samplingIntervalSeconds, messageQueuePublisher, configManager);
 
-            using (var cancellationTokenSource = new CancellationTokenSource())
+            using var cancellationTokenSource = new CancellationTokenSource();
+            Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                Console.CancelKeyPress += (sender, eventArgs) =>
-                {
-                    eventArgs.Cancel = true;
-                    cancellationTokenSource.Cancel();
-                };
+                eventArgs.Cancel = true;
+                cancellationTokenSource.Cancel();
+            };
 
-                await collector.StartCollectingAsync(cancellationTokenSource.Token, "ServerStatistics");
-            }
+            await collector.StartCollectingAsync(cancellationTokenSource.Token, "ServerStatistics");
         }
     }
 }

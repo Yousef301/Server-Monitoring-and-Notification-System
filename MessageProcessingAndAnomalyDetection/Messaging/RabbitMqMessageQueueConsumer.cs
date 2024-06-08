@@ -1,4 +1,6 @@
 ﻿using System.Text;
+using MessageProcessingAndAnomalyDetection.ConsoleIO.ConsoleInput;
+using MessageProcessingAndAnomalyDetection.ConsoleIO.ConsoleOutput;
 using MessageProcessingAndAnomalyDetection.Interfaces;
 using MessageProcessingAndAnomalyDetection.Interfaces.Repositories;
 using MessageProcessingAndAnomalyDetection.Interfaces.Services;
@@ -6,6 +8,7 @@ using MessageProcessingAndAnomalyDetection.Models;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Serilog;
 
 namespace MessageProcessingAndAnomalyDetection.Messaging;
 
@@ -46,24 +49,31 @@ public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
             string?[] routingKeyParts = ea.RoutingKey.Split('.');
             var serverIdentifier = routingKeyParts.Length > 1 ? routingKeyParts[1] : null;
 
-            var deserializedMessage = JsonConvert.DeserializeObject<T>(message);
+            T? deserializedMessage = default;
+            try
+            {
+                deserializedMessage = JsonConvert.DeserializeObject<T>(message);
+            }
+            catch (JsonException e)
+            {
+                Log.Information($"Failed to deserialize message: {message}");
+            }
 
             if (deserializedMessage is ServerStatistics serverStat)
             {
-                var previousServerStatistics = _serverStatisticsMongoDbRepository.GetLatestServerStatistics();
+                var previousServerStatistics = _serverStatisticsMongoDbRepository.GetLatestServerStatisticsAsync();
 
-                _sendAlertsService.SendAlerts(serverStat, previousServerStatistics);
+                _sendAlertsService.SendAlerts(serverStat, previousServerStatistics.Result);
 
                 serverStat.ServerIdentifier = serverIdentifier;
-                _serverStatisticsMongoDbRepository.AddServerStatistics(serverStat);
+                _serverStatisticsMongoDbRepository.AddServerStatisticsAsync(serverStat);
                 Console.WriteLine(serverStat.ToString());
             }
         };
 
         channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 
-
-        Console.WriteLine(" Press [enter] to exit.");
-        Console.ReadLine();
+        ConsoleOutput.MessageDisplay(" Press [enter] to exit.");
+        ConsoleUserInput.ReadInput();
     }
 }

@@ -4,7 +4,7 @@ namespace MessageProcessingAndAnomalyDetection.Interfaces.Repositories;
 
 public interface IServerStatisticsRepository
 {
-    void AddServerStatistics(ServerStatistics serverStatistics);
+    Task AddServerStatisticsAsync(ServerStatistics serverStatistics);
 
-    ServerStatistics GetLatestServerStatistics();
+    Task<ServerStatistics> GetLatestServerStatisticsAsync();
 }

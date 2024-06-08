@@ -1,4 +1,5 @@
-﻿using MessageProcessingAndAnomalyDetection.Messaging;
+﻿using MessageProcessingAndAnomalyDetection.Logging;
+using MessageProcessingAndAnomalyDetection.Messaging;
 using MessageProcessingAndAnomalyDetection.Models;
 using MessageProcessingAndAnomalyDetection.Repositories;
 using MessageProcessingAndAnomalyDetection.Services;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using RabbitMQ.Client;
+using Serilog;
 using ConfigurationManager = ServerStatisticsCollection.Configurations.ConfigurationManager;
 
 namespace MessageProcessingAndAnomalyDetection;
@@ -21,24 +23,36 @@ class Program
         var anomalyDetectionConfigurations = GetAnomalyDetectionConfigurations(configManager);
         var connectionString = configManager.GetSection("MongoDBConnectionStrings");
         var signalRHubUrl = configManager.GetSection("SignalRConfig");
+        var serilogConfigs = configManager.GetSection("SerilogLogger");
 
-        if (connectionString != null && signalRHubUrl != null && anomalyDetectionConfigurations != null)
+
+        if (connectionString != null && signalRHubUrl != null && anomalyDetectionConfigurations != null &&
+            serilogConfigs != null)
         {
             var mongoDb = GetMongoDb(connectionString["ConnectionString"], connectionString["DatabaseName"]);
             var serverStatisticsMongoDbRepository = new ServerStatisticsMongoDbRepository(mongoDb);
 
-            var hubConnection = CreateHubConnection(signalRHubUrl["SignalRUrl"]);
-            var anomalyDetectionService = new AnomalyDetectionService();
+            if (signalRHubUrl["SignalRUrl"] != null && serilogConfigs["Path"] != null)
+            {
+                var hubConnection = CreateHubConnection(signalRHubUrl["SignalRUrl"]);
+                var anomalyDetectionService = new AnomalyDetectionService();
 
-            var sendAlertsService =
-                new SendAlertsService(anomalyDetectionService, anomalyDetectionConfigurations, hubConnection);
+                Log.Logger = LoggerFactory.CreateLogger(serilogConfigs["Path"]);
 
-            await hubConnection.StartAsync();
+                var sendAlertsService =
+                    new SendAlertsService(anomalyDetectionService, anomalyDetectionConfigurations, hubConnection);
 
-            var factory = new ConnectionFactory() { HostName = "localhost" };
-            var messageQueue =
-                new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
-            messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
+                await hubConnection.StartAsync();
+
+                var factory = new ConnectionFactory() { HostName = "localhost" };
+                var messageQueue =
+                    new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
+                messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
+            }
+            else
+            {
+                Console.WriteLine("SignalRUrl or logging path is not configured in the appsettings.json file");
+            }
         }
     }
 
