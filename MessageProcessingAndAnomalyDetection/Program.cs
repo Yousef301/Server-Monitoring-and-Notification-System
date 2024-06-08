@@ -45,7 +45,9 @@ class Program
 
                 await hubConnection.StartAsync();
 
-                var factory = new ConnectionFactory { HostName = "localhost" };
+                var rabbitHost = configManager.GetData("RabbitMqConfig", "Host");
+                var factory = new ConnectionFactory() { HostName = rabbitHost };
+
                 var messageQueue =
                     new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
                 messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");

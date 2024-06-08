@@ -17,7 +17,8 @@ class Program
         if (int.TryParse(configManager.GetData("ServerStatisticsConfig", "SamplingIntervalSeconds"),
                 out var samplingIntervalSeconds))
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" };
+            var rabbitHost = configManager.GetData("RabbitMQConfig", "Host");
+            var factory = new ConnectionFactory() { HostName = rabbitHost };
 
             IMessageQueuePublisher messageQueuePublisher = new RabbitMqMessageQueuePublisher(factory);
 
