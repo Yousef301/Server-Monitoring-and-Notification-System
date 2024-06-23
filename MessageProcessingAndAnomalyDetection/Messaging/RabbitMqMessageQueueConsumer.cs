@@ -56,7 +56,7 @@ public class RabbitMqMessageQueueConsumer : IMessageQueueConsumer
             }
             catch (JsonException e)
             {
-                Log.Information($"Failed to deserialize message: {message}");
+                Log.Error($"Failed to deserialize message: {message}");
             }
 
             if (deserializedMessage is ServerStatistics serverStat)

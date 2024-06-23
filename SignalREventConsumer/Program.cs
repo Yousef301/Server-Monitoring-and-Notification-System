@@ -1,31 +1,49 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
-using ServerStatisticsCollection.Configurations;
+using Microsoft.Extensions.Configuration;
 
-namespace SignalREventConsumer;
-
-class Program
+namespace SignalREventConsumer
 {
-    static async Task Main(string[] args)
+    class Program
     {
-        var currentNamespace = typeof(Program).Namespace?.Split('.')[0];
-
-        var configManager = new ConfigurationManager(currentNamespace);
-        var signalRUrl = configManager.GetSection("SignalRConfig")["SignalRUrl"];
-
-        if (signalRUrl == null)
+        static async Task Main(string[] args)
         {
-            return;
+            IConfigurationRoot configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+                .AddEnvironmentVariables()
+                .Build();
+            
+            var signalRUrl = configuration["SignalRConfig:SignalRUrl"];
+            var serilogPath = configuration["SerilogLogger:Path"];
+            
+
+            if (signalRUrl == null)
+            {
+                Console.WriteLine("SignalR URL is not configured.");
+                return;
+            }
+
+            var connection = new HubConnectionBuilder()
+                .WithUrl(signalRUrl)
+                .Build();
+
+            connection.On<string, string>("ReceiveMessage", (user, message) => 
+            { 
+                Console.WriteLine($"{user}: {message}"); 
+            });
+
+            try
+            {
+                await connection.StartAsync();
+                Console.WriteLine("Connection started.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error starting connection: {ex.Message}");
+                return;
+            }
+
+            var resetEvent = new ManualResetEvent(false);
+            resetEvent.WaitOne();
         }
-
-        var connection = new HubConnectionBuilder()
-            .WithUrl(signalRUrl)
-            .Build();
-
-        await connection.StartAsync();
-
-        connection.On("ReceiveMessage",
-            (string user, string message) => { Console.WriteLine($"{user}: {message}"); });
-
-        Console.ReadKey();
     }
 }

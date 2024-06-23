@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using RabbitMQ.Client;
 using Serilog;
-using ConfigurationManager = ServerStatisticsCollection.Configurations.ConfigurationManager;
 
 namespace MessageProcessingAndAnomalyDetection;
 
@@ -17,46 +16,44 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var currentNamespace = typeof(Program).Namespace?.Split('.')[0];
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .AddEnvironmentVariables()
+            .Build();
 
-        var configManager = new ConfigurationManager(currentNamespace);
+        var anomalyDetectionConfigurations = GetAnomalyDetectionConfigurations(configuration);
 
-        var anomalyDetectionConfigurations = GetAnomalyDetectionConfigurations(configManager);
-        var connectionString = configManager.GetSection("MongoDBConnectionStrings");
-        var signalRHubUrl = configManager.GetSection("SignalRConfig");
-        var serilogConfigs = configManager.GetSection("SerilogLogger");
+        var databaseName = configuration["MongoDBConnectionStrings:DatabaseName"];
+        var connectionString = configuration["MongoDBConnectionStrings:ConnectionString"];
+
+        var signalRHubUrl = configuration["SignalRConfig:SignalRUrl"];
+
+        var serilogPath = configuration["SerilogLogger:Path"];
+
+        var rabbitHost = configuration["RabbitMqConfig:Host"];
 
 
         if (connectionString != null && signalRHubUrl != null && anomalyDetectionConfigurations != null &&
-            serilogConfigs != null)
+            serilogPath != null && databaseName != null && rabbitHost != null)
         {
-            var mongoDb = GetMongoDb(connectionString["ConnectionString"], connectionString["DatabaseName"]);
+            var mongoDb = GetMongoDb(connectionString, databaseName);
             var serverStatisticsMongoDbRepository = new ServerStatisticsMongoDbRepository(mongoDb);
 
-            if (signalRHubUrl["SignalRUrl"] != null && serilogConfigs["Path"] != null)
-            {
-                var hubConnection = CreateHubConnection(signalRHubUrl["SignalRUrl"]);
-                var anomalyDetectionService = new AnomalyDetectionService();
+            var hubConnection = CreateHubConnection(signalRHubUrl);
+            var anomalyDetectionService = new AnomalyDetectionService();
 
-                Log.Logger = LoggerFactory.CreateLogger(serilogConfigs["Path"]);
+            Log.Logger = LoggerFactory.CreateLogger(serilogPath);
 
-                var sendAlertsService =
-                    new SendAlertsService(anomalyDetectionService, anomalyDetectionConfigurations, hubConnection);
+            var sendAlertsService =
+                new SendAlertsService(anomalyDetectionService, anomalyDetectionConfigurations, hubConnection);
 
-                await hubConnection.StartAsync();
+            await hubConnection.StartAsync();
 
-                var rabbitHost = configManager.GetData("RabbitMqConfig", "Host");
-                var factory = new ConnectionFactory() { HostName = rabbitHost };
+            var factory = new ConnectionFactory() { HostName = rabbitHost };
 
-                var messageQueue =
-                    new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
-                messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
-            }
-            else
-            {
-                ConsoleOutput.MessageDisplay(
-                    "SignalRUrl or logging path is not configured in the appsettings.json file.");
-            }
+            var messageQueue =
+                new RabbitMqMessageQueueConsumer(factory, serverStatisticsMongoDbRepository, sendAlertsService);
+            messageQueue.StartConsuming<ServerStatistics>("ServerStatistics", "ServerStatistics");
         }
         else
             ConsoleOutput.MessageDisplay(
@@ -69,32 +66,28 @@ class Program
         return client.GetDatabase(databaseName);
     }
 
-    private static AnomalyDetectionConfigurations? GetAnomalyDetectionConfigurations(ConfigurationManager configManager)
+    private static AnomalyDetectionConfigurations? GetAnomalyDetectionConfigurations(IConfigurationRoot configuration)
     {
-        var anomalyDetectionConfigurations = configManager.GetSection("AnomalyDetectionConfig");
-
-        if (anomalyDetectionConfigurations == null)
+        try
         {
+            return new AnomalyDetectionConfigurations()
+            {
+                MemoryUsageAnomalyThresholdPercentage =
+                    Double.Parse(configuration["AnomalyDetectionConfig:MemoryUsageAnomalyThresholdPercentage"]),
+                CpuUsageAnomalyThresholdPercentage =
+                    Double.Parse(configuration["AnomalyDetectionConfig:CpuUsageAnomalyThresholdPercentage"]),
+                MemoryUsageThresholdPercentage =
+                    Double.Parse(configuration["AnomalyDetectionConfig:MemoryUsageThresholdPercentage"]),
+                CpuUsageThresholdPercentage =
+                    Double.Parse(configuration["AnomalyDetectionConfig:CpuUsageThresholdPercentage"]),
+            };
+        }
+        catch (Exception e)
+        {
+            Log.Error(
+                "Anomaly detection configurations are not set correctly in the appsettings.json file.");
             return null;
         }
-
-        return new AnomalyDetectionConfigurations()
-        {
-            MemoryUsageAnomalyThresholdPercentage = GetValueOrDefault(anomalyDetectionConfigurations,
-                "MemoryUsageAnomalyThresholdPercentage"),
-            CpuUsageAnomalyThresholdPercentage =
-                GetValueOrDefault(anomalyDetectionConfigurations, "CpuUsageAnomalyThresholdPercentage"),
-            MemoryUsageThresholdPercentage =
-                GetValueOrDefault(anomalyDetectionConfigurations, "MemoryUsageThresholdPercentage"),
-            CpuUsageThresholdPercentage =
-                GetValueOrDefault(anomalyDetectionConfigurations, "CpuUsageThresholdPercentage"),
-        };
-    }
-
-    private static double GetValueOrDefault(IConfigurationSection configuration, string key)
-    {
-        var value = configuration[key];
-        return value != null ? Math.Round(double.Parse(value)) : 0;
     }
 
     private static HubConnection CreateHubConnection(string url)

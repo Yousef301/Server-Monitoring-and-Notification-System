@@ -1,5 +1,5 @@
-﻿using RabbitMQ.Client;
-using ServerStatisticsCollection.Configurations;
+﻿using Microsoft.Extensions.Configuration;
+using RabbitMQ.Client;
 using ServerStatisticsCollection.Interfaces;
 using ServerStatisticsCollection.Messaging;
 using ServerStatisticsCollection.Services;
@@ -10,19 +10,22 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var currentNamespace = typeof(Program).Namespace?.Split('.')[0];
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .AddEnvironmentVariables()
+            .Build();
 
-        var configManager = new ConfigurationManager(currentNamespace);
+        var samplingIntervalSecondsString = configuration["ServerStatisticsConfig:SamplingIntervalSeconds"];
 
-        if (int.TryParse(configManager.GetData("ServerStatisticsConfig", "SamplingIntervalSeconds"),
+        if (int.TryParse(samplingIntervalSecondsString,
                 out var samplingIntervalSeconds))
         {
-            var rabbitHost = configManager.GetData("RabbitMQConfig", "Host");
+            var rabbitHost = configuration["RabbitMQConfig:Host"];
             var factory = new ConnectionFactory() { HostName = rabbitHost };
 
             IMessageQueuePublisher messageQueuePublisher = new RabbitMqMessageQueuePublisher(factory);
 
-            var collector = new StatisticsCollector(samplingIntervalSeconds, messageQueuePublisher, configManager);
+            var collector = new StatisticsCollector(samplingIntervalSeconds, messageQueuePublisher, configuration);
 
             using var cancellationTokenSource = new CancellationTokenSource();
             Console.CancelKeyPress += (sender, eventArgs) =>

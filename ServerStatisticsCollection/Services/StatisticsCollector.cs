@@ -1,8 +1,7 @@
 ﻿using System.Diagnostics;
-using ServerStatisticsCollection.Configurations;
 using ServerStatisticsCollection.Interfaces;
 using ServerStatisticsCollection.Models;
-using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
 
 namespace ServerStatisticsCollection.Services;
 
@@ -12,11 +11,11 @@ public class StatisticsCollector : IStatisticsCollector
     private readonly PerformanceCounter _cpuCounter;
     private readonly PerformanceCounter _availableMemoryCounter;
     private readonly IMessageQueuePublisher _messageQueuePublisher;
-    private readonly ConfigurationManager _configManager;
+    private readonly IConfigurationRoot _configManager;
 
     public StatisticsCollector(int samplingIntervalSeconds,
         IMessageQueuePublisher messageQueuePublisher,
-        ConfigurationManager configManager)
+        IConfigurationRoot configManager)
     {
         _samplingIntervalSeconds = samplingIntervalSeconds;
         _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
@@ -27,7 +26,7 @@ public class StatisticsCollector : IStatisticsCollector
 
     public async Task StartCollectingAsync(CancellationToken cancellationToken, string exchange)
     {
-        var topic = "ServerStatistics." + _configManager.GetData("ServerStatisticsConfig", "ServerIdentifier");
+        var topic = "ServerStatistics." + _configManager["ServerStatisticsConfig:ServerIdentifier"];
 
         while (!cancellationToken.IsCancellationRequested)
         {
